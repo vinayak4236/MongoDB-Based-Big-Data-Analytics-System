@@ -139,8 +139,12 @@ try {
     else {
         $dependencyCode = @'
 import importlib.metadata as metadata
+from packaging.version import Version
 names = ["numpy", "pandas", "pymongo", "python-dotenv", "scikit-learn", "pyspark", "streamlit", "plotly", "joblib"]
 versions = [f"{name}={metadata.version(name)}" for name in names]
+assert Version(metadata.version("pymongo")) >= Version("4.18.2"), "PyMongo must be >=4.18.2"
+assert Version(metadata.version("urllib3")) >= Version("2.8.0"), "urllib3 must be >=2.8.0"
+versions.append(f"urllib3={metadata.version('urllib3')}")
 print("; ".join(versions))
 '@
         Invoke-PythonCheck "Dependency inventory" $dependencyCode | Out-Null

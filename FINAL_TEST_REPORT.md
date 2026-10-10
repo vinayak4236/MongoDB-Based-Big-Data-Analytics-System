@@ -27,7 +27,9 @@
 | Required project structure | PASS | All 20 required project paths, including this validation script, are present |
 | Environment-file protection | PASS | `.env` ignore rule exists; credential values were not inspected |
 | Project interpreter | PASS | `D:\BDA\student-placement-bigdata\.venv\Scripts\python.exe`, Python 3.14.7 |
-| Dependency inventory | PASS | NumPy 2.5.2, pandas 3.0.5, PyMongo 4.18.0, python-dotenv 1.2.3, scikit-learn 1.9.0, PySpark 4.2.0, Streamlit 1.63.0, Plotly 7.0.0, Joblib 1.6.0 |
+| Dependency inventory | PASS | NumPy 2.5.2, pandas 3.0.5, PyMongo 4.18.3, urllib3 2.8.0, python-dotenv 1.2.3, scikit-learn 1.9.0, PySpark 4.2.0, Streamlit 1.63.0, Plotly 7.0.0, Joblib 1.6.0 |
+| Dependency consistency | PASS | `pip check` reports no broken requirements |
+| Security dependency remediation | PASS | Raised minimums to PyMongo 4.18.2 and urllib3 2.8.0; installed patched floor or later in the project environment |
 | Configuration and paths | PASS | Configuration loaded and required paths validated without displaying the connection string |
 | Dataset schema | PASS | `data/students.csv`: 10,000 rows, 20 columns, required schema present |
 | Dataset quality | PASS | 0 missing cells, 0 duplicate rows; 9,230 Placed and 770 Not Placed |
@@ -60,6 +62,10 @@
   passed.
 - No MongoDB credentials, values from `.env`, or other secrets are included in
   validation output.
+- The security review identified dependency hygiene advisories for the previous
+  installed PyMongo 4.18.0 and urllib3 2.7.0. Neither affected feature path was
+  found reachable in this app. Requirements now require PyMongo >=4.18.2 and
+  urllib3 >=2.8.0; installed versions are PyMongo 4.18.3 and urllib3 2.8.0.
 
 ## Files changed
 
@@ -68,6 +74,8 @@
 - Updated `README.md` with the actual project structure and validation instructions.
 - Updated `RUN_INSTRUCTIONS.md` with the current intermittent-block status and
   validation command.
+- Updated `requirements.txt` with patched minimum versions for PyMongo and urllib3.
+- Updated this report's dependency inventory and remediation test evidence.
 - Replaced this report with the current validation evidence.
 - Removed only four generated cache directories after backup; no source, data,
   configuration, model, or analytics output was deleted.
@@ -89,7 +97,8 @@ disabled until the extension is available.
 
 ## Final status
 
-**Current validation script run: 12 PASS, 1 SKIPPED, 0 FAIL, 0 BLOCKED.** The
+**Current validation script run: 12 PASS, 1 SKIPPED, 0 FAIL, 0 BLOCKED, plus
+`pip check` PASS.** The
 separate simulated security-block regression also passed. Automated unit tests
 are not present. The previous Application Control denial remains recorded as an
 intermittent environmental issue, but the latest direct import, model prediction,
