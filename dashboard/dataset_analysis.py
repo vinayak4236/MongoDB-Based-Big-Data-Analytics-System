@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import json
 from io import BytesIO
+from pathlib import Path
 from typing import Any
 
+import joblib
 import pandas as pd
 
 EXPECTED_COLUMNS = {
@@ -81,12 +84,15 @@ def dynamic_numeric_columns(dataframe: pd.DataFrame) -> list[str]:
     return dataframe.select_dtypes(include="number").columns.tolist()
 
 
-def train_uploaded_models(dataframe: pd.DataFrame) -> dict[str, Any]:
+def train_uploaded_models(dataframe: pd.DataFrame, model_dir: str | Path) -> dict[str, Any]:
     from ml.evaluate_models import evaluate_model, select_best_model
     from ml.feature_engineering import prepare_training_data
     from ml.train_models import _model_pipelines
 
     x, y = prepare_training_data(dataframe)
+    class_counts = y.value_counts()
+    if len(dataframe) < 10 or class_counts.min() < 2:
+        raise ValueError("Training requires at least 10 records and at least 2 records for each placement class.")
     from sklearn.model_selection import train_test_split
 
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42, stratify=y)
@@ -95,4 +101,20 @@ def train_uploaded_models(dataframe: pd.DataFrame) -> dict[str, Any]:
     for name, pipeline in pipelines.items():
         pipeline.fit(x_train, y_train)
         metrics[name] = evaluate_model(pipeline, x_test, y_test)
-    return {"models": metrics, "best_model": select_best_model(metrics), "records": len(dataframe)}
+    best_model = select_best_model(metrics)
+    destination = Path(model_dir)
+    destination.mkdir(parents=True, exist_ok=True)
+    model_path = destination / "placement_model.joblib"
+    metadata_path = destination / "training_metadata.json"
+    joblib.dump(pipelines[best_model], model_path)
+
+    result = {
+        "models": metrics,
+        "best_model": best_model,
+        "records": len(dataframe),
+        "train_records": len(x_train),
+        "test_records": len(x_test),
+        "model_path": str(model_path),
+    }
+    metadata_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+    return result

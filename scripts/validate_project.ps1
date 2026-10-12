@@ -84,6 +84,7 @@ try {
         "spark\preprocessing.py",
         "spark\spark_session.py",
         "scripts\validate_project.ps1",
+        "tests\test_dashboard.py",
         "requirements.txt",
         ".env.example",
         ".gitignore",
@@ -263,10 +264,31 @@ actual = [(metric.label, metric.value) for metric in app.metric]
 assert actual == expected, f"dashboard KPI mismatch: {actual} != {expected}"
 
 app.sidebar.radio[0].set_value("Dataset Upload").run(timeout=60)
-app.file_uploader[0].upload("students.csv", DEFAULT_CSV_PATH.read_bytes(), "text/csv").run(timeout=60)
+from unittest.mock import patch
+models = {
+    name: {key: 0.5 for key in ["accuracy", "precision", "recall", "f1", "roc_auc"]}
+    for name in ["logistic_regression", "decision_tree", "random_forest"]
+}
+training_result = {
+    "best_model": "random_forest",
+    "model_path": "validation-only-model.joblib",
+    "models": models,
+}
+with (
+    patch("database.uploaded_datasets.persist_uploaded_dataset", return_value={
+        "database": "student_analytics",
+        "collection": "uploaded_students",
+        "upload_id": "validation-only-upload",
+        "rows_saved": len(data),
+    }),
+    patch("database.uploaded_datasets.save_uploaded_training_result"),
+    patch("dashboard.dataset_analysis.train_uploaded_models", return_value=training_result),
+):
+    app.file_uploader[0].upload("students.csv", DEFAULT_CSV_PATH.read_bytes(), "text/csv").run(timeout=60)
 assert not app.exception, [str(item.value) for item in app.exception]
 assert any(metric.label == "Rows" and metric.value == f"{len(data):,}" for metric in app.metric)
-print(f"All {len(pages)} pages rendered; six live KPIs match CSV; project CSV upload profiled")
+assert any("Automatic training complete" in item.value for item in app.success)
+print(f"All {len(pages)} pages rendered; six live KPIs match CSV; upload/training UI tested with MongoDB and model writes mocked")
 '@
         Invoke-PythonCheck "Streamlit rendered-page regression" $appTestCode | Out-Null
 

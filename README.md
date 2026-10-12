@@ -153,6 +153,9 @@ python -m streamlit run dashboard\app.py
 
 Open `http://localhost:8501`.
 
+For manual Windows setup, MongoDB/Spark configuration, running each phase, and
+uploading the included sample CSVs, see [RUN_INSTRUCTIONS.md](./RUN_INSTRUCTIONS.md).
+
 The dashboard loads the project CSV and renders its dataset analytics separately
 from the machine-learning stack. If a Windows Application Control policy blocks
 SciPy's native extension, the dataset pages remain available and the app displays
@@ -174,11 +177,27 @@ or `SKIPPED` per check. It validates paths and dataset schema, checks MongoDB,
 runs a small Spark DataFrame operation with the project interpreter configured
 as the worker, checks SciPy/scikit-learn and the saved prediction API when
 available, tests the rendered Streamlit pages and CSV upload, and starts a
-temporary local Streamlit server for an HTTP smoke check. A missing test suite
-is reported as `SKIPPED`; security-policy blocks are reported as `BLOCKED`.
+temporary local Streamlit server for an HTTP smoke check. Upload persistence and
+training are mocked in this validation smoke test so it does not write test
+records or model artifacts. Security-policy blocks are reported as `BLOCKED`.
 Required failures and blocks return a nonzero exit code. The script does not
 display MongoDB credentials, retrain/overwrite the model, modify security
 settings, or delete project files.
+
+### Run automated tests
+
+The project test suite uses Python's built-in `unittest` runner and the existing
+virtual environment; no additional test package is required:
+
+```powershell
+Set-Location "D:\BDA\student-placement-bigdata"
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+The suite covers upload parsing and schema checks, placement feature preparation
+and model evaluation/training, mocked MongoDB upload persistence, upload-flow
+behavior, and rendering all dashboard pages with project and uploaded datasets.
+MongoDB write tests use mocks; the suite does not change live database contents.
 
 ### Dynamic dataset upload
 
@@ -192,9 +211,21 @@ common student fields, and missing expected fields are reported clearly.
 
 Uploaded data is not passed to the saved project model automatically. If and only if
 the exact Phase 3 feature schema and `placement_status` target are present, the
-dashboard offers optional training and comparison of Logistic Regression, Decision
-Tree, and Random Forest models on the uploaded data. CSV is currently supported;
-Excel and JSON are intentionally reserved for a later extension.
+dashboard automatically trains and compares Logistic Regression, Decision Tree,
+and Random Forest models when the ML dependencies are available. MongoDB must be
+running for uploads: each CSV's rows are saved in the separate
+`student_analytics.uploaded_students` collection, and its upload/training status
+and metrics are recorded in `uploaded_dataset_batches`. The best upload-specific
+model is saved under `models/trained_model/uploads/<upload-id>/`; this does not
+replace the project dataset, its MongoDB `students` collection, or its saved
+model. CSV is currently supported; Excel and JSON are intentionally reserved for
+a later extension.
+
+Two distinct, synthetic, 1,000-row CSV samples are provided for upload testing:
+`data/upload_samples/student_upload_sample_a.csv` and
+`data/upload_samples/student_upload_sample_b.csv`. Both use the complete 20-column
+project schema, so they can be used for dynamic analytics and automatic model
+training when MongoDB and the ML dependencies are available.
 
 ## Spark configuration
 

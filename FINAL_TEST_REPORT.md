@@ -39,9 +39,31 @@
 | Saved model | PASS | Existing model loaded; test call returned `Placed`, probability 0.513 (51.30%). No retraining or artifact replacement occurred |
 | Streamlit rendering | PASS | AppTest rendered all eight pages with zero exceptions; six Overview KPIs matched values calculated from the CSV |
 | Dataset upload | PASS | Existing project CSV upload was profiled in AppTest; 10,000 rows and no Streamlit exception |
+| Sample upload datasets | PASS | Created two distinct synthetic files with 1,000 rows, 20 columns, both placement classes, no missing/duplicate rows, and full Phase 3 schema |
+| Sample dashboard uploads | PASS | Both sample CSVs uploaded through AppTest and displayed the expected 1,000-row/20-column profile |
+| Sample model-training workflow | PASS | Each sample independently trained and compared Logistic Regression, Decision Tree, and Random Forest; Random Forest selected in both test runs |
 | Streamlit HTTP startup | PASS | Validation script launched an isolated local server on an ephemeral port and received HTTP 200; browser inspection separately confirmed real rendered dashboard content on port 8503 |
-| Automated test suite | SKIPPED | No `tests/` or `test/` directory exists. `python -B -m unittest discover -v` found 0 tests and returned code 5 |
+| Automated test suite (2026-10-12) | PASS | Added and ran 25 `unittest` tests covering CSV upload handling, ML feature/training behavior, mocked MongoDB persistence, upload UI handling, and all dashboard pages |
 | Simulated ML security block | PASS | Regression test simulated the SciPy Application Control ImportError; analytics remained visible and prediction/model training were disabled with clear warnings |
+
+## Additional upload workflow verification (2026-10-12)
+
+| Check | Result | Evidence |
+|---|---|---|
+| MongoDB upload persistence | PASS | Uploaded a 1,000-row sample into `student_analytics.uploaded_students`; batch manifest recorded the filename, row count, and saved status in `uploaded_dataset_batches` |
+| Automatic upload model training | PASS | Logistic Regression, Decision Tree, and Random Forest trained without a button click; Random Forest was selected and the upload-specific model artifact was saved |
+| Streamlit rerun behavior | PASS | Re-rendering the page kept the same 1,000 MongoDB rows and reused the per-session result |
+| Incomplete training schema | PASS | A valid small CSV was saved to MongoDB and clearly marked as training skipped with the missing feature columns |
+| Cleanup of integration-test data | PASS | Test-only MongoDB documents and upload-specific model artifacts were removed after verification |
+
+## Automated test suite
+
+Command: `.\.venv\Scripts\python.exe -m unittest discover -s tests -v`
+
+Result: **25 tests passed**. MongoDB persistence unit tests use mocked collections;
+dashboard upload tests mock MongoDB persistence and training so they do not
+modify a live database or create model artifacts. The validation script's upload
+smoke test now uses the same mock boundary.
 
 ## Diagnostics and environment notes
 
@@ -76,6 +98,18 @@
   validation command.
 - Updated `requirements.txt` with patched minimum versions for PyMongo and urllib3.
 - Updated this report's dependency inventory and remediation test evidence.
+- Added `data/upload_samples/student_upload_sample_a.csv` and
+  `data/upload_samples/student_upload_sample_b.csv` for dashboard upload testing.
+- Added `database/uploaded_datasets.py` to save uploaded student rows and training
+  status in separate MongoDB collections without replacing the project collection.
+- Added a `tests/` unittest suite for upload parsing, schema validation, ML
+  preparation/training, MongoDB persistence behavior, and dashboard pages.
+- Updated `scripts/validate_project.ps1` to require the tests and mock upload
+  persistence/training during its dashboard smoke test.
+- Updated the dashboard to persist uploads and automatically train compatible
+  data into upload-specific model artifacts.
+- Updated README and Windows run instructions for manual startup, MongoDB upload
+  persistence, and automatic model training.
 - Replaced this report with the current validation evidence.
 - Removed only four generated cache directories after backup; no source, data,
   configuration, model, or analytics output was deleted.
@@ -97,10 +131,11 @@ disabled until the extension is available.
 
 ## Final status
 
-**Current validation script run: 12 PASS, 1 SKIPPED, 0 FAIL, 0 BLOCKED, plus
-`pip check` PASS.** The
-separate simulated security-block regression also passed. Automated unit tests
-are not present. The previous Application Control denial remains recorded as an
-intermittent environmental issue, but the latest direct import, model prediction,
-rendered dashboard, and full validation run succeeded. The project is not claimed
-to have a unit-test suite or uninterrupted ML availability.
+**Latest full validation on 2026-10-12: 13 PASS, 0 SKIPPED, 0 FAIL, 0 BLOCKED.**
+The standalone test command passed all 25 tests. The upload integration test
+passed against MongoDB with its test data removed afterward. The separate
+simulated security-block regression also passed. The earlier 2026-10-10
+validation snapshot had one skipped test-suite check because tests did not yet
+exist. The previous Application Control denial remains recorded as an
+intermittent environmental issue; the project does not claim uninterrupted ML
+availability.
